@@ -26,8 +26,9 @@ public:
 	ProblemData();
 	~ProblemData();
 
-	void ReadSubstrate(char * subGraph);
-	void ReadVNsFolder(char * folder, int numberVNs);
+	bool ReadInputData(char *argv[]);
+	bool ReadSubstrate(char * subGraph);
+	bool ReadVNsFolder(char * folder, int numberVNs);
 	
 	Graph* getSubstrate();
 	Request* getRequest(int i);
@@ -36,8 +37,8 @@ public:
 	bool getLocation(){ return location_;}
 	bool getDelay() { return delay_; }
 	bool getResilience() {return resilience_; }
-	bool getOptimizationObjective() { return fo_; }
-	bool getTimeLimit() { return time_limit_; }
+	int getOptimizationObjective() { return fo_; }
+	int getTimeLimit() { return time_limit_; }
 };
 
 #endif

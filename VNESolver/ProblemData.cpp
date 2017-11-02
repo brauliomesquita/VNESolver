@@ -9,7 +9,7 @@ ProblemData::ProblemData()
 	this->location_ = false;
 	this->delay_ = false;
 	this->resilience_ = false;
-	
+
 	this->fo_ = 1;
 	this->time_limit_ = 3600;
 }
@@ -17,19 +17,35 @@ ProblemData::ProblemData()
 ProblemData::~ProblemData()
 {
 	delete substrate_;
-	
-	for(int v=0; v<requests_.size(); v++){
+
+	for(int v = 0; v < requests_.size(); v++){
 		delete requests_[v];
 	}
 	requests_.clear();
 }
 
-void ProblemData::ReadSubstrate(char * subGraph) {
+bool ProblemData::ReadInputData(char* argv[])
+{
+	if(!this->ReadSubstrate(argv[1]))
+		return false;
+	
+	if(!this->ReadVNsFolder(argv[2], atoi(argv[3])))
+		return false;
+	
+	this->getSubstrate()->setDist(this->getSubstrate());
+	
+	for(int v=0; v<numberVns(); v++)
+		this->getRequest(v)->getGraph()->setDist(this->getSubstrate());
+
+	return true;
+}
+
+bool ProblemData::ReadSubstrate(char * subGraph) {
 	FILE * arquivo = fopen(subGraph, "r");
 
 	if (!arquivo){
 		cout << "Erro ao abrir arquivo!" << endl;
-		return;
+		return false;
 	}
 
 	int n, m, k, l;
@@ -44,17 +60,18 @@ void ProblemData::ReadSubstrate(char * subGraph) {
 		fscanf(arquivo, "%d %d %lf", &x, &y, &cpu);
 
 		substrate_->addNode(Node(i, x, y, cpu));
-    }
+	}
 
+	for (int i = 0; i < substrate_->getM(); i++) {
+		fscanf(arquivo, "%d %d %lf %lf", &k, &l, &banda, &atraso);
 
-    for (int i = 0; i < substrate_->getM(); i++) {
-        fscanf(arquivo, "%d %d %lf %lf", &k, &l, &banda, &atraso);
+		substrate_->addEdge(Edge(i, k, l, banda, atraso));
+	}
 
-        substrate_->addEdge(Edge(i, k, l, banda, atraso));
-    }
+	return true;
 }
 
-void ProblemData::ReadVNsFolder(char * folder, int numberVNs) {
+bool ProblemData::ReadVNsFolder(char * folder, int numberVNs) {
 
 	char file[512];
 
@@ -69,7 +86,7 @@ void ProblemData::ReadVNsFolder(char * folder, int numberVNs) {
 
 		if(!arquivo){
 			cout << "Erro ao abrir arquivo '" << file << "'!" << endl;
-			return;
+			return false;
 		}
 
 		fscanf(arquivo, "%d %d %d %d %d %d %d", &n, &m, &split, &chegada,
@@ -106,6 +123,8 @@ void ProblemData::ReadVNsFolder(char * folder, int numberVNs) {
 
 		fclose(arquivo);
 	}
+
+	return true;
 }
 
 Graph* ProblemData::getSubstrate()

@@ -11,13 +11,10 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 	ProblemData * data = new ProblemData();
-	data->ReadSubstrate(argv[1]);
-	data->ReadVNsFolder(argv[2], atoi(argv[3]));
+	bool ret = data->ReadInputData(argv);
 
-	/*substrate->setDist(substrate);
-	for(int v=0; v<requests.size(); v++){
-		requests[v]->getGraph()->setDist(substrate);
-	}*/
+	if(!ret)
+		return -1;
 
 	bool location = true;
 	bool resilience = false;

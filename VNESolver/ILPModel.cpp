@@ -33,7 +33,6 @@ void ILPModel::SetCplexParameters(ProblemData * data) {
 
 }
 
-/* FO -- 1: padrão (banda), 2: alfa, 3: delay */
 float ILPModel::Solve(ProblemData * data) {
 	const IloEnv env;
 	IloModel model(env);
@@ -53,26 +52,25 @@ float ILPModel::Solve(ProblemData * data) {
 		//P = 2;
 	}
 	problem->out() << "Objective Function:" << endl;
+	if(data->getOptimizationObjective() == 0)
+		problem->out() << "Maximize Profit" << endl;
 	if(data->getOptimizationObjective() == 1)
 		problem->out() << "Minimize Band" << endl;
 	if(data->getOptimizationObjective() == 2)
 		problem->out() << "Load Balance" << endl;
 	if(data->getOptimizationObjective() == 3)
 		problem->out() << "Minimize Delay" << endl;
-	if(data->getOptimizationObjective() == 0)
-		problem->out() << "Maximize Profit" << endl;
-
+	
 	problem->out() << endl << endl;
 
 	SetCplexParameters(data);
-	
 
 	x = IntVar4Matrix(env, data->numberVns());
 	z = IntVar3Matrix(env, data->numberVns());
 	y = IloIntVarArray(env, data->numberVns());
 
 	char var_name[256];
-
+	
 	for (int v = 0; v < data->numberVns(); v++) {
 		x[v] = IntVar3Matrix(env, data->getRequest(v)->getGraph()->getN());
 		
@@ -125,7 +123,6 @@ float ILPModel::Solve(ProblemData * data) {
 		obj += data->getRequest(v)->getProfit() * y[v];
 		cout << "VN_" << v << " Profit: " << data->getRequest(v)->getProfit() << endl;
 	}
-
 
 	objective.setExpr(obj);
 	obj.end();
@@ -197,7 +194,6 @@ float ILPModel::Solve(ProblemData * data) {
 
 					expr5 += data->getRequest(v)->getGraph()->getEdges()[kl].getBW() * x[v][kl][i][j];
 					expr5 += data->getRequest(v)->getGraph()->getEdges()[kl].getBW() * x[v][kl][j][i];
-
 				}
 			}
 			if(flag)
@@ -236,11 +232,7 @@ float ILPModel::Solve(ProblemData * data) {
 					exprD += z[v][l][i];
 
 				model.add(exprA - exprB == exprC - exprD);
-
 			}
-
-
-
 		}
 	}
 
@@ -251,7 +243,6 @@ float ILPModel::Solve(ProblemData * data) {
 		if(problem->solve()){
 			cout << "Best Solution Cost: " << problem->getObjValue() << endl;
 		}
-
 	} catch (IloException& e) {
 		cerr << "ERROR: " << e.getMessage() << endl;
 	} catch (...) {
