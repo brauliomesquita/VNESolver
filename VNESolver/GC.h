@@ -47,10 +47,13 @@ class GC {
 	ThreeDimRange constraint_saida;
 	ThreeDimRange constraint_entrada;
 
-	OneDimRange coverCuts;
+	OneDimRange cover_cuts_;
 
 	ProblemData * data;
 	
+	float Values[10000];
+	float Weights[10000];
+
 	public:
 		GC(ProblemData * data);
 		GC(GC * parent);

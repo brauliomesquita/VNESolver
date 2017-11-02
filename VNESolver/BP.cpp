@@ -12,7 +12,7 @@ void BP::Solve(ProblemData* data){
 	
 	std::vector<Column> solucaoInicial;
 
-	float bestLB = INFINITY;
+	float bestLB = -INFINITY;
 
 	arvore.push_back(raiz);
 
@@ -77,7 +77,7 @@ void BP::Solve(ProblemData* data){
 		int best_cost = -INFINITY;
 		int best_index = -1;
 		for(int s=0; s<arvore.size(); s++){
-			if(arvore[s]->parentUB > best_cost){
+			if(arvore[s]->parentUB >= best_cost){
 				best_cost = arvore[s]->parentUB;
 				best_index = s;
 			}
@@ -93,7 +93,7 @@ void BP::Solve(ProblemData* data){
 		GC * gc = arvore[best_index];
 		arvore.erase(arvore.begin() + best_index);
 
-		if(gc->parentUB > bestLB + 0.0001){
+		if(gc->parentUB > bestLB - 0.0001){
 			cout << "Número de colunas: " << gc->parentPool.size() << endl;
 
 			init = get_time();

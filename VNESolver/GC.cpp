@@ -1,7 +1,7 @@
 #include "GC.h"
 
 GC::GC(ProblemData * data):	tempoMaster(0), tempoSub(0), tempoTotal(0), tempoRelaxacao(0),
-							ub(-INFINITY), lb(INFINITY), parentUB(INFINITY),
+							ub(-INFINITY), lb(INFINITY), parentUB(-INFINITY),
 							id(0), sol_inteira(false), nCols(0), gCols(0)
 {
 	this->data = data;
@@ -15,14 +15,14 @@ GC::GC(ProblemData * data):	tempoMaster(0), tempoSub(0), tempoTotal(0), tempoRel
 GC::GC(GC * parent):	tempoMaster(0), tempoSub(0), tempoTotal(0), tempoRelaxacao(0),
 						ub(-INFINITY), lb(INFINITY), id(-1)
 {
+	this->data = parent->data;
+	
 	this->pool = std::vector<Column>();
 	this->parentPool = std::vector<Column>(parent->pool);
-	this->branchs = std::vector<Branch>(parent->branchs);
 	this->forbidden = std::vector<Column>(parent->forbidden);
+	this->branchs = std::vector<Branch>(parent->branchs);
+	
 	this->parentUB = parent->ub;
-
-	this->data = parent->data;
-
 }
 
 GC::~GC(){
@@ -33,10 +33,83 @@ GC::~GC(){
 
 void GC::GenerateCoverCuts(){
 	
-	if(master->getStatus() != IloAlgorithm::Feasible)
+	if(master->getStatus() != IloAlgorithm::Optimal)
 		return;
 
 	// Para cada Restrição:
+	for(int c = 0; c < constraint_bw.getSize(); c++){
+		int num_vars = 0;
+
+		for (IloExpr::LinearIterator it = constraint_bw[c].getLinearIterator(); it.ok();++it) {
+			Weights[num_vars] = it.getCoef();
+			Values[num_vars] = master->getValue(it.getVar());
+			++num_vars;
+		}
+
+		if(!num_vars){
+			continue;
+		}
+
+		float rhs = constraint_bw[c].getUB();
+
+		// Solve Knapsack problem
+		IloEnv env2;
+		IloModel model2(env2);
+		IloCplex cplex2(env2);
+
+		IloObjective objective2(env2);
+
+		IloIntVarArray x(env2, num_vars);
+		for(int i=0; i<num_vars; i++)
+		{
+			char varname[32];
+			sprintf(varname, "x_%d", i);
+			x[i] = IloIntVar(env2, 0, 1, varname);
+		}
+		model2.add(x);
+
+		IloExpr obj2(env2);
+		IloExpr expr2(env2);
+		for(int i=0; i<num_vars; i++)
+		{
+			obj2 += (1 - Values[i]) *  x[i];
+			expr2 += Weights[i] * x[i];
+		}
+
+		model2.add(IloMinimize(env2, obj2));
+
+		model2.add(expr2 >= rhs + 0.001);
+
+		cplex2.extract(model2);
+		//cplex2.exportModel("knapsack_model.lp");
+		if(!cplex2.solve())
+			continue;
+
+		if(cplex2.getObjValue() < 1)
+		{
+			IloExpr ccut(env);
+			int count = 0;
+			int contador = 0;
+			for (IloExpr::LinearIterator it = constraint_bw[c].getLinearIterator(); it.ok();++it) {
+				if(cplex2.getIntValue(x[count]) == 1)
+				{
+					ccut += it.getVar();
+					contador++;
+				}
+				++count;;
+			}
+
+			cover_cuts_.add(ccut <= contador - 1);
+
+			cout << "here" << endl;
+		}
+
+	}
+
+	model.add(cover_cuts_);
+
+	master->extract(model);
+	master->exportModel("master_cover_cuts.lp");
 
 	// Roda Knapsack problem
 
