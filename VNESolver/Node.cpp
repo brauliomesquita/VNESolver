@@ -1,6 +1,6 @@
 #include "Node.h"
     
-Node::Node(int id, double x, double y, double cpu){
+Node::Node(int id, float x, float y, float cpu){
     this->id = id;
     this->x = x;
     this->y = y;
@@ -14,14 +14,14 @@ int Node::getId(){
     return this->id;
 }
 
-double Node::getX(){
+float Node::getX(){
     return this->x;
 }
 
-double Node::getY(){
+float Node::getY(){
     return this->y;
 }
 
-double Node::getCPU(){
+float Node::getCPU(){
     return this->cpu;
 }

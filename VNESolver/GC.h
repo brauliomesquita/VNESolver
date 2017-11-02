@@ -12,6 +12,8 @@
 #include "Pricing.h"
 #include "Utility.h"
 #include "Branch.h"
+#include "ProblemData.h";
+#include "KnapsackProblem.h"
 
 using namespace std;
 
@@ -45,44 +47,46 @@ class GC {
 	ThreeDimRange constraint_saida;
 	ThreeDimRange constraint_entrada;
 
-	Graph *substrate;
-	std::vector<Request*> requests;
-	
+	OneDimRange coverCuts;
+
+	ProblemData * data;
 	
 	public:
-		GC();
+		GC(ProblemData * data);
 		GC(GC * parent);
-		void Solve(Graph *substrate, std::vector<Request*> requests, bool location, bool delay, bool resilience, int *y_, Branch *branch, unsigned int *saida);
+	~GC();
+		void GenerateCoverCuts();
+		int Solve(Branch * branch);
+		void BuildModel();	
 		void CreateVariables();
 		void CreateObjectiveFunction();
 		void CreateConstraints();
-		void addColumns(std::vector<Column> colunas);
+		void AddColumns(std::vector<Column> colunas);
 		void getDuals(IloNumArray2 * gamma, IloNumArray3 * alpha, IloNumArray3 * pi, IloNumArray * beta);
 		void SetCplexParameters();
-		double getGAP();
+		float getGAP();
 
 		void addBranchLambda(int m, int valor);
 		void addBranch(Branch branch, int valor);
-		/*double tempoMaster =0, tempoSub=0, tempoTotal=0, tempoRelaxacao=0;
-		double ub = INFINITY;
-		double lb = -INFINITY;
+		/*float tempoMaster =0, tempoSub=0, tempoTotal=0, tempoRelaxacao=0;
+		float ub = INFINITY;
+		float lb = -INFINITY;
 		bool sol_inteira = true;
 		unsigned int id = 1;
-		double parentUB = INFINITY;
+		float parentUB = INFINITY;
 		unsigned int nCols = 0, gCols = 0;*/
-		double tempoMaster, tempoSub, tempoTotal, tempoRelaxacao;
-		double ub;
-		double lb;
+		float tempoMaster, tempoSub, tempoTotal, tempoRelaxacao;
+		float ub;
+		float lb;
 		bool sol_inteira;
 		unsigned int id;
-		double parentUB;
+		float parentUB;
 		unsigned int nCols, gCols;
 		std::vector<Column> parentPool;
 		std::vector<Column> forbidden;
 		std::vector<Branch> branchs;
 		std::vector<Column> pool;
-
-		bool location;
+		Pricing * pricing;
 };
 
 #endif /* GC_H */

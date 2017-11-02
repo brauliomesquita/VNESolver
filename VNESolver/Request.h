@@ -8,7 +8,7 @@ class Request {
     int id, arrival, departure, duration, maxD;
     Graph *g;
 
-    double profit;
+    float profit;
     
     public:
     Request(int id, int arrival, int duration, int maxD);
@@ -22,8 +22,8 @@ class Request {
     int getDuration();
     int getMaxD();
 
-    void setProfit(double value);
-    double getProfit();
+    void setProfit(float value);
+    float getProfit();
       
 };
 

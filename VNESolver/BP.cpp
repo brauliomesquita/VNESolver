@@ -3,27 +3,25 @@
 
 void BP::Solve(ProblemData* data){
 	std::vector<GC*> arvore;
-	GC * raiz = new GC();
+	GC * raiz = new GC(data);
 	Branch branch1;
-	int y;
-	unsigned int saida;
-	double bestLB = 0;
 
 	bool * redeAceita = new bool[data->numberVns()];
 	for(int v=0; v<data->numberVns(); v++)
 		redeAceita[v] = false;
 	
 	std::vector<Column> solucaoInicial;
-	bestLB = 0.0;
+
+	float bestLB = INFINITY;
 
 	arvore.push_back(raiz);
 
 	const char separator = ' ';
 	const int nameWidth = 15;
-	double worstUB;
-	double tempoExecucao = 0;
+	float worstUB;
+	float tempoExecucao = 0;
 
-	double init, end;
+	float init, end;
 
 	std::ofstream ofs;
 	ofs.open ("outfile", std::ofstream::out);
@@ -73,7 +71,7 @@ void BP::Solve(ProblemData* data){
 	ofs << endl;
 
 	while(arvore.size() != 0){
-		if(tempoExecucao >= 3600)
+		if(tempoExecucao >= data->getTimeLimit())
 			break;
 
 		int best_cost = -INFINITY;
@@ -85,8 +83,13 @@ void BP::Solve(ProblemData* data){
 			}
 		}
 		
-		//best_index = arvore.size() - 1;	// Depth-First Search
-		//best_index = 0;					// Breadth-First Search
+		// Depth-First Search
+		//best_index = arvore.size() - 1;
+
+		// Breadth-First Search
+		//best_index = 0;
+
+		//Best Bound Search
 		GC * gc = arvore[best_index];
 		arvore.erase(arvore.begin() + best_index);
 
@@ -94,7 +97,7 @@ void BP::Solve(ProblemData* data){
 			cout << "Número de colunas: " << gc->parentPool.size() << endl;
 
 			init = get_time();
-			gc->Solve(data->getSubstrate(), data->requests_, data->getLocation(), data->getDelay(), data->getResilience(), &y, &branch1, &saida);
+			int ret = gc->Solve(&branch1);
 			end = get_time();
 			tempoExecucao += gc->tempoTotal;
 
@@ -139,9 +142,11 @@ void BP::Solve(ProblemData* data){
 			ofs << left << setw(nameWidth) << setfill(separator) << gc->tempoTotal;
 			ofs << left << setw(nameWidth) << setfill(separator) << (end - init);
 			ofs << endl;
+
+			delete gc;
 		}
 
-	//	delete gc;
+		
 	//	break;
 	}
 

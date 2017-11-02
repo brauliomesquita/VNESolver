@@ -17,15 +17,20 @@ int main(int argc, char *argv[])
 	if(!ret)
 		return -1;
 
-	bool location = true;
-	bool resilience = false;
-	bool delay = false;
+	/*ILPModel ilp;
+	ilp.Solve(data);*/
 
-	ILPModel ilp;
-	ilp.Solve(data);
+	/*BP bp;
+	bp.Solve(data);*/
 
-	BP bp;
-	bp.Solve(data);
+	KnapsackProblem * kp = new KnapsackProblem();
+
+	float Weights[] = {2.75, 2.25, 30, 14.25, 25};
+	float Values[] = {1.1, 2.02, 3.003, 4.0004, 5.00005};
+
+	float retKP = kp->Solve(5, Weights, Values, 5);
+
+	cout << retKP << endl;
 
 	return 0;
 }

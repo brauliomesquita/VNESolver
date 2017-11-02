@@ -42,10 +42,10 @@ int Request::getDeparture(){
     return this->maxD;
 }
 
-void Request::setProfit(double value){
+void Request::setProfit(float value){
     this->profit = value;
 }
 
-double Request::getProfit(){
+float Request::getProfit(){
     return this->profit;
 }

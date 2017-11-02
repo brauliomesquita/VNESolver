@@ -13,7 +13,7 @@ class Column {
 		int k, l;
 		int lowerBound;
 		int upperBound;
-		double custoFO;
+		float custoFO;
 
 		Column(int v, int kl);
 

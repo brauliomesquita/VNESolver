@@ -85,6 +85,7 @@
     <ClInclude Include="GC.h" />
     <ClInclude Include="Graph.h" />
     <ClInclude Include="ILPModel.h" />
+    <ClInclude Include="KnapsackProblem.h" />
     <ClInclude Include="MappingEdge.h" />
     <ClInclude Include="MappingLink.h" />
     <ClInclude Include="MappingNode.h" />
@@ -102,6 +103,7 @@
     <ClCompile Include="GC.cpp" />
     <ClCompile Include="Graph.cpp" />
     <ClCompile Include="ILPModel.cpp" />
+    <ClCompile Include="KnapsackProblem.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MappingEdge.cpp" />
     <ClCompile Include="MappingLink.cpp" />

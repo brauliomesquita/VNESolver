@@ -13,7 +13,7 @@ class Graph {
     int n;
     int m;
     int **adj;
-    double **dist;
+    float **dist;
 
     std::vector<Node> nodes;
     std::vector<Edge> edges;
@@ -34,9 +34,9 @@ class Graph {
 
      void setDist(Graph * sub);
 
-     double getDist(int i, int j);
+     float getDist(int i, int j);
 
-     double getCost(int m);
+     float getCost(int m);
 
      std::vector<Node> getNodes();
      std::vector<Edge> getEdges();

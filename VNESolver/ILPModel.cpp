@@ -224,7 +224,6 @@ float ILPModel::Solve(ProblemData * data) {
 					exprB += x[v][kl][j][i];
 				}
 
-				IloExpr exprL(env);
 				if (!data->getLocation() || data->getRequest(v)->getGraph()->getDist(k, i) <= data->getRequest(v)->getMaxD())
 					exprC += z[v][k][i];
 

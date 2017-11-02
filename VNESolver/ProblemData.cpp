@@ -10,7 +10,7 @@ ProblemData::ProblemData()
 	this->delay_ = false;
 	this->resilience_ = false;
 
-	this->fo_ = 1;
+	this->fo_ = 0;
 	this->time_limit_ = 3600;
 }
 
@@ -50,20 +50,20 @@ bool ProblemData::ReadSubstrate(char * subGraph) {
 
 	int n, m, k, l;
 	int x, y;
-	double cpu, banda, atraso;
+	float cpu, banda, atraso;
 
 	fscanf(arquivo, "%d %d", &n, &m);
 
 	substrate_ = new Graph(n, m);
 
 	for (int i = 0; i < substrate_->getN(); i++) {
-		fscanf(arquivo, "%d %d %lf", &x, &y, &cpu);
+		fscanf(arquivo, "%d %d %f", &x, &y, &cpu);
 
 		substrate_->addNode(Node(i, x, y, cpu));
 	}
 
 	for (int i = 0; i < substrate_->getM(); i++) {
-		fscanf(arquivo, "%d %d %lf %lf", &k, &l, &banda, &atraso);
+		fscanf(arquivo, "%d %d %f %f", &k, &l, &banda, &atraso);
 
 		substrate_->addEdge(Edge(i, k, l, banda, atraso));
 	}
@@ -98,19 +98,19 @@ bool ProblemData::ReadVNsFolder(char * folder, int numberVNs) {
 
 		int k, l;
 		int x, y;
-		double cpu;
-		double banda, atraso;
-		double profit = 0;
+		float cpu;
+		float banda, atraso;
+		float profit = 0;
 
 		for (int i = 0; i < g->getN(); i++) {
-			fscanf(arquivo, "%d %d %lf", &x, &y, &cpu);
+			fscanf(arquivo, "%d %d %f", &x, &y, &cpu);
 
 			g->addNode(Node(i, x, y, cpu));
 			profit += cpu;
 		}
 
 		for (int i = 0; i < g->getM(); i++) {
-			fscanf(arquivo, "%d %d %lf %lf", &k, &l, &banda, &atraso);
+			fscanf(arquivo, "%d %d %f %f", &k, &l, &banda, &atraso);
 
 			g->addEdge(Edge(i, k, l, banda, atraso));
 			profit += banda;

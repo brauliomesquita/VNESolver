@@ -4,15 +4,15 @@
 class Node {
     
     int id;
-    double x, y, cpu;
+    float x, y, cpu;
     
     public:
-    Node(int id, double x, double y, double cpu);
+    Node(int id, float x, float y, float cpu);
     Node();
     int getId();
-    double getX();
-    double getY();
-    double getCPU();
+    float getX();
+    float getY();
+    float getCPU();
 
 };
 

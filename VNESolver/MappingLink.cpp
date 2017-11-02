@@ -13,10 +13,10 @@ Edge MappingLink::getPhysEdge(){
 	return this->phys;
 }
 
-double MappingLink::getBW(){
+float MappingLink::getBW(){
 	return this->BW;
 }
 
-void MappingLink::setBW(double bw){
+void MappingLink::setBW(float bw){
 	this->BW = bw;
 }

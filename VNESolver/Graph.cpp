@@ -51,9 +51,9 @@ int Graph::getAdj(int i, int j) {
 
 void Graph::setDist(Graph *sub) {
 
-    this->dist = new double*[this->n];
+    this->dist = new float*[this->n];
     for (int i = 0; i < this->n; i++) {
-        this->dist[i] = new double[sub->getN()];
+        this->dist[i] = new float[sub->getN()];
         for (int j = 0; j < sub->getN(); j++) {
             this->dist[i][j] = sqrt(pow(this->getNodes()[i].getX() - sub->getNodes()[j].getX(), 2)
                 + pow(this->getNodes()[i].getY() - sub->getNodes()[j].getY(), 2));
@@ -61,22 +61,22 @@ void Graph::setDist(Graph *sub) {
     }
 }
 
-double Graph::getDist(int i, int j) {
+float Graph::getDist(int i, int j) {
     return this->dist[i][j];
 }
 
-double Graph::getCost(int m) {
+float Graph::getCost(int m) {
 
     int orig = this->getEdges()[m].getOrig();
     int dest = this->getEdges()[m].getDest();
 /*
-    double x1 = this->getNodes()[orig].getX();
-    double y1 = this->getNodes()[orig].getY();
+    float x1 = this->getNodes()[orig].getX();
+    float y1 = this->getNodes()[orig].getY();
 
-    double x2 = this->getNodes()[dest].getX();
-    double y2 = this->getNodes()[dest].getY();
+    float x2 = this->getNodes()[dest].getX();
+    float y2 = this->getNodes()[dest].getY();
 
-    double cost = sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
+    float cost = sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
 */
     return dist[orig][dest];
 }

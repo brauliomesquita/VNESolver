@@ -60,6 +60,9 @@
     <ClInclude Include="Branch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="KnapsackProblem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ProblemData.cpp">
@@ -108,6 +111,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Column.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KnapsackProblem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -3,17 +3,17 @@
 
 class Edge {
     int id, orig, dest;
-    double bw, delay;
+    float bw, delay;
 
   public:
 
   	Edge();
-	Edge (int id, int o, int d, double b, double del);
+	Edge (int id, int o, int d, float b, float del);
      int getId();    
      int getOrig();    
      int getDest();    
-     double getBW();    
-     double getDelay();
+     float getBW();    
+     float getDelay();
 };
 
 #endif

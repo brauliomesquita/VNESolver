@@ -1,18 +1,47 @@
 #include "GC.h"
 
-GC::GC(){
+GC::GC(ProblemData * data):	tempoMaster(0), tempoSub(0), tempoTotal(0), tempoRelaxacao(0),
+							ub(-INFINITY), lb(INFINITY), parentUB(INFINITY),
+							id(0), sol_inteira(false), nCols(0), gCols(0)
+{
+	this->data = data;
+
 	pool = std::vector<Column>();
 	parentPool = std::vector<Column>();
 	forbidden = std::vector<Column>();
 	branchs = std::vector<Branch>();
 }
 
-GC::GC(GC * parent){
+GC::GC(GC * parent):	tempoMaster(0), tempoSub(0), tempoTotal(0), tempoRelaxacao(0),
+						ub(-INFINITY), lb(INFINITY), id(-1)
+{
 	this->pool = std::vector<Column>();
 	this->parentPool = std::vector<Column>(parent->pool);
 	this->branchs = std::vector<Branch>(parent->branchs);
 	this->forbidden = std::vector<Column>(parent->forbidden);
 	this->parentUB = parent->ub;
+
+	this->data = parent->data;
+
+}
+
+GC::~GC(){
+	delete pricing;
+	delete master;
+	env.end();
+}
+
+void GC::GenerateCoverCuts(){
+	
+	if(master->getStatus() != IloAlgorithm::Feasible)
+		return;
+
+	// Para cada Restrição:
+
+	// Roda Knapsack problem
+
+	// Adiciona nova restrição
+
 }
 
 void GC::addBranchLambda(int m, int valor){
@@ -88,27 +117,33 @@ void GC::SetCplexParameters() {
 	//master->setParam(IloCplex::Threads, 1);
 }
 
+void GC::BuildModel()
+{
+	this->CreateVariables();
+	this->CreateObjectiveFunction();
+	this->CreateConstraints();
+}
 
 void GC::CreateVariables(){
-	y = IloNumVarArray(env, requests.size());
+	y = IloNumVarArray(env, data->numberVns());
 	lambda = IloNumVarArray(env);
 
 	char var_name[256];
 
-	for (int v = 0; v < requests.size(); v++) {
+	for (int v = 0; v < data->numberVns(); v++) {
 		sprintf(var_name, "y_%d", v);
 		y[v] = IloNumVar(env, 0, 1, var_name);
 		model.add(y[v]);
 	}
 
-	z = NumVar3Matrix(env, requests.size());
-	for (int v = 0; v < requests.size(); v++) {
-		z[v] = NumVarMatrix(env, requests[v]->getGraph()->getN());
-		for (int k = 0; k < requests[v]->getGraph()->getN(); k++) {
-			z[v][k] = IloNumVarArray(env, substrate->getN());
-			for (int i = 0; i < substrate->getN(); i++) {
+	z = NumVar3Matrix(env, data->numberVns());
+	for (int v = 0; v < data->numberVns(); v++) {
+		z[v] = NumVarMatrix(env, data->getRequest(v)->getGraph()->getN());
+		for (int k = 0; k < data->getRequest(v)->getGraph()->getN(); k++) {
+			z[v][k] = IloNumVarArray(env, data->getSubstrate()->getN());
+			for (int i = 0; i < data->getSubstrate()->getN(); i++) {
 
-				if (location && requests[v]->getGraph()->getDist(k, i) > requests[v]->getMaxD())
+				if (data->getLocation() && data->getRequest(v)->getGraph()->getDist(k, i) > data->getRequest(v)->getMaxD())
 					continue;
 
 				sprintf(var_name, "z_%d_%d_%d", v, k, i);
@@ -125,8 +160,8 @@ void GC::CreateObjectiveFunction() {
 
 	IloExpr obj(env);
 
-	for (int v = 0; v < requests.size(); v++) {
-		obj += requests[v]->getProfit() * y[v];
+	for (int v = 0; v < data->numberVns(); v++) {
+		obj += data->getRequest(v)->getProfit() * y[v];
 	}
 
 	objective.setExpr(obj);
@@ -136,13 +171,13 @@ void GC::CreateObjectiveFunction() {
 
 void GC::CreateConstraints() {
 
-	for (int v = 0; v < requests.size(); v++) {
-		for (int k = 0; k < requests[v]->getGraph()->getN(); k++) {
+	for (int v = 0; v < data->numberVns(); v++) {
+		for (int k = 0; k < data->getRequest(v)->getGraph()->getN(); k++) {
 			IloExpr expr6(env);
 
-			for (int i = 0; i < substrate->getN(); i++) {
+			for (int i = 0; i < data->getSubstrate()->getN(); i++) {
 
-				if (location && requests[v]->getGraph()->getDist(k, i) > requests[v]->getMaxD())
+				if (data->getLocation() && data->getRequest(v)->getGraph()->getDist(k, i) > data->getRequest(v)->getMaxD())
 					continue;
 
 				expr6 += z[v][k][i];
@@ -153,13 +188,13 @@ void GC::CreateConstraints() {
 	}
 
 	/* Restrição 3: diferentes nós virtuais de uma mesma rede não serão alocados no mesmo nó físico */
-	for (int v = 0; v < requests.size(); v++) {
-		for (int i = 0; i < substrate->getN(); i++) {
+	for (int v = 0; v < data->numberVns(); v++) {
+		for (int i = 0; i < data->getSubstrate()->getN(); i++) {
 			IloExpr expr7(env);
 			bool flag = false;
-			for (int k = 0; k < requests[v]->getGraph()->getN(); k++) {
+			for (int k = 0; k < data->getRequest(v)->getGraph()->getN(); k++) {
 
-				if (location && requests[v]->getGraph()->getDist(k, i) > requests[v]->getMaxD())
+				if (data->getLocation() && data->getRequest(v)->getGraph()->getDist(k, i) > data->getRequest(v)->getMaxD())
 					continue;
 
 				flag = true;
@@ -172,28 +207,28 @@ void GC::CreateConstraints() {
 	}
 
 	/* Restrição 4: CPU */
-	for (int i = 0; i < substrate->getN(); i++) {
+	for (int i = 0; i < data->getSubstrate()->getN(); i++) {
 		IloExpr expr4(env);
 		bool flag = false;
-		for (int v = 0; v < requests.size(); v++) {
-			for (int k = 0; k < requests[v]->getGraph()->getN(); k++) {
+		for (int v = 0; v < data->numberVns(); v++) {
+			for (int k = 0; k < data->getRequest(v)->getGraph()->getN(); k++) {
 
-				if (location && requests[v]->getGraph()->getDist(k, i) > requests[v]->getMaxD())
+				if (data->getLocation() && data->getRequest(v)->getGraph()->getDist(k, i) > data->getRequest(v)->getMaxD())
 					continue;
 				flag = true;
-				expr4 += requests[v]->getGraph()->getNodes()[k].getCPU() * z[v][k][i];
+				expr4 += data->getRequest(v)->getGraph()->getNodes()[k].getCPU() * z[v][k][i];
 			}
 		}
 		if (flag)
-			model.add(expr4 - substrate->getNodes()[i].getCPU() <= 0);
+			model.add(expr4 - data->getSubstrate()->getNodes()[i].getCPU() <= 0);
 	}
 
 	char cName[256];
 
-	constraint_lambda = TwoDimRange(env, requests.size());
-	for (int v = 0; v < requests.size(); v++) {
-		constraint_lambda[v] = OneDimRange(env, requests[v]->getGraph()->getM());
-		for(int kl=0; kl<requests[v]->getGraph()->getM(); kl++){
+	constraint_lambda = TwoDimRange(env, data->numberVns());
+	for (int v = 0; v < data->numberVns(); v++) {
+		constraint_lambda[v] = OneDimRange(env, data->getRequest(v)->getGraph()->getM());
+		for(int kl=0; kl<data->getRequest(v)->getGraph()->getM(); kl++){
 			sprintf(cName, "constLambda_%d_%d", v, kl);
 			constraint_lambda[v][kl] = -y[v] == 0;
 			constraint_lambda[v][kl].setName(cName);
@@ -202,27 +237,27 @@ void GC::CreateConstraints() {
 	}
 	
 	// Bandwidth constraints
-	constraint_bw = OneDimRange(env, substrate->getM());
-	for (int i = 0; i < substrate->getM(); i++) {
-		for (int j = i; j < substrate->getN(); j++) {
-			if(substrate->getAdj(i,j) != -1){
+	constraint_bw = OneDimRange(env, data->getSubstrate()->getM());
+	for (int i = 0; i < data->getSubstrate()->getM(); i++) {
+		for (int j = i; j < data->getSubstrate()->getN(); j++) {
+			if(data->getSubstrate()->getAdj(i,j) != -1){
 				IloExpr expr_band(env);
-				constraint_bw[substrate->getAdj(i,j)] = expr_band <= substrate->getEdges()[substrate->getAdj(i,j)].getBW();
+				constraint_bw[data->getSubstrate()->getAdj(i,j)] = expr_band <= data->getSubstrate()->getEdges()[data->getSubstrate()->getAdj(i,j)].getBW();
 				sprintf(cName, "constBW_%d_%d", i, j);
-				constraint_bw[substrate->getAdj(i,j)].setName(cName);
+				constraint_bw[data->getSubstrate()->getAdj(i,j)].setName(cName);
 			}
 		}
 	}
 	model.add(constraint_bw);
 
-		constraint_saida = ThreeDimRange(env, requests.size());
-	for (int v = 0; v < requests.size(); v++) {
-		constraint_saida[v] = TwoDimRange(env, requests[v]->getGraph()->getM());
-		for(int kl=0; kl<requests[v]->getGraph()->getM(); kl++){
-			constraint_saida[v][kl] = OneDimRange(env, substrate->getN());
-			int k = requests[v]->getGraph()->getEdges()[kl].getOrig();
-			for(int i = 0; i < substrate->getN(); i++){			
-				if(!location || requests[v]->getGraph()->getDist(k, i) <= requests[v]->getMaxD()){
+		constraint_saida = ThreeDimRange(env, data->numberVns());
+	for (int v = 0; v < data->numberVns(); v++) {
+		constraint_saida[v] = TwoDimRange(env, data->getRequest(v)->getGraph()->getM());
+		for(int kl=0; kl<data->getRequest(v)->getGraph()->getM(); kl++){
+			constraint_saida[v][kl] = OneDimRange(env, data->getSubstrate()->getN());
+			int k = data->getRequest(v)->getGraph()->getEdges()[kl].getOrig();
+			for(int i = 0; i < data->getSubstrate()->getN(); i++){			
+				if(!data->getLocation() || data->getRequest(v)->getGraph()->getDist(k, i) <= data->getRequest(v)->getMaxD()){
 					sprintf(cName, "constSaida_%d_%d_%d", v, kl, i);
 
 					constraint_saida[v][kl][i] = -z[v][k][i] <= 0;
@@ -233,14 +268,14 @@ void GC::CreateConstraints() {
 		}
 	}
 
-	constraint_entrada = ThreeDimRange(env, requests.size());
-	for (int v = 0; v < requests.size(); v++) {
-		constraint_entrada[v] = TwoDimRange(env, requests[v]->getGraph()->getM());
-		for(int kl=0; kl<requests[v]->getGraph()->getM(); kl++){
-			constraint_entrada[v][kl] = OneDimRange(env, substrate->getN());
-			int l = requests[v]->getGraph()->getEdges()[kl].getDest();
-			for(int i = 0; i < substrate->getN(); i++){				
-				if(!location || requests[v]->getGraph()->getDist(l, i) <= requests[v]->getMaxD()){
+	constraint_entrada = ThreeDimRange(env, data->numberVns());
+	for (int v = 0; v < data->numberVns(); v++) {
+		constraint_entrada[v] = TwoDimRange(env, data->getRequest(v)->getGraph()->getM());
+		for(int kl=0; kl<data->getRequest(v)->getGraph()->getM(); kl++){
+			constraint_entrada[v][kl] = OneDimRange(env, data->getSubstrate()->getN());
+			int l = data->getRequest(v)->getGraph()->getEdges()[kl].getDest();
+			for(int i = 0; i < data->getSubstrate()->getN(); i++){				
+				if(!data->getLocation() || data->getRequest(v)->getGraph()->getDist(l, i) <= data->getRequest(v)->getMaxD()){
 					sprintf(cName, "constEnt_%d_%d_%d", v, kl, i);
 					constraint_entrada[v][kl][i] = -z[v][l][i] <= 0;
 					model.add(constraint_entrada[v][kl][i]);
@@ -250,9 +285,10 @@ void GC::CreateConstraints() {
 		}
 	}
 
+	cover_cuts_ = OneDimRange(env);
 }
 
-void GC::addColumns(std::vector<Column> colunas){
+void GC::AddColumns(std::vector<Column> colunas){
 
 	for(int m=0; m < colunas.size(); m++){
 		if(colunas[m].lowerBound + colunas[m].upperBound == 0)
@@ -278,7 +314,7 @@ void GC::addColumns(std::vector<Column> colunas){
 		for(int e=0; e<edges.size(); e++){
 			int ij = edges[e].getId();
 
-			constraint_bw[ij].setLinearCoef(new_variable, requests[v]->getGraph()->getEdges()[kl].getBW());
+			constraint_bw[ij].setLinearCoef(new_variable, data->getRequest(v)->getGraph()->getEdges()[kl].getBW());
 		}
 
 		if(colunas[m].k != -1 ){
@@ -297,38 +333,38 @@ void GC::addColumns(std::vector<Column> colunas){
 
 void GC::getDuals(IloNumArray2 * gamma, IloNumArray3 * alpha, IloNumArray3 * pi, IloNumArray * beta){
 
-	for (int v = 0; v < requests.size(); v++) {
-		for(int kl=0; kl<requests[v]->getGraph()->getM(); kl++){
+	for (int v = 0; v < data->numberVns(); v++) {
+		for(int kl=0; kl<data->getRequest(v)->getGraph()->getM(); kl++){
 			(*gamma)[v][kl] = master->getDual(constraint_lambda[v][kl]);
 		}
 	}
 	
 	// Bandwidth constraints
-	for (int i = 0; i < substrate->getM(); i++) {
-		for (int j = i; j < substrate->getN(); j++) {
-			if(substrate->getAdj(i,j) != -1){
-				(*beta)[substrate->getAdj(i,j)] = master->getDual(constraint_bw[substrate->getAdj(i,j)]);
+	for (int i = 0; i < data->getSubstrate()->getM(); i++) {
+		for (int j = i; j < data->getSubstrate()->getN(); j++) {
+			if(data->getSubstrate()->getAdj(i,j) != -1){
+				(*beta)[data->getSubstrate()->getAdj(i,j)] = master->getDual(constraint_bw[data->getSubstrate()->getAdj(i,j)]);
 			}
 		}
 	}
 
-	for (int v = 0; v < requests.size(); v++) {
-		for(int kl=0; kl<requests[v]->getGraph()->getM(); kl++){
-			int k = requests[v]->getGraph()->getEdges()[kl].getOrig();
-			int l = requests[v]->getGraph()->getEdges()[kl].getDest();
-			for(int i = 0; i < substrate->getN(); i++){				
-				if(!location || requests[v]->getGraph()->getDist(k, i) <= requests[v]->getMaxD()){
+	for (int v = 0; v < data->numberVns(); v++) {
+		for(int kl=0; kl<data->getRequest(v)->getGraph()->getM(); kl++){
+			int k = data->getRequest(v)->getGraph()->getEdges()[kl].getOrig();
+			//int l = data->getRequest(v)->getGraph()->getEdges()[kl].getDest();
+			for(int i = 0; i < data->getSubstrate()->getN(); i++){				
+				if(!data->getLocation() || data->getRequest(v)->getGraph()->getDist(k, i) <= data->getRequest(v)->getMaxD()){
 					(*alpha)[v][kl][i] = master->getDual(constraint_saida[v][kl][i]);
 				}
 			}
 		}
 	}
 
-	for (int v = 0; v < requests.size(); v++) {
-		for(int kl=0; kl<requests[v]->getGraph()->getM(); kl++){
-			int l = requests[v]->getGraph()->getEdges()[kl].getDest();
-			for(int i = 0; i < substrate->getN(); i++){				
-				if(!location || requests[v]->getGraph()->getDist(l, i) <= requests[v]->getMaxD()){
+	for (int v = 0; v < data->numberVns(); v++) {
+		for(int kl=0; kl<data->getRequest(v)->getGraph()->getM(); kl++){
+			int l = data->getRequest(v)->getGraph()->getEdges()[kl].getDest();
+			for(int i = 0; i < data->getSubstrate()->getN(); i++){				
+				if(!data->getLocation() || data->getRequest(v)->getGraph()->getDist(l, i) <= data->getRequest(v)->getMaxD()){
 					(*pi)[v][kl][i] = master->getDual(constraint_entrada[v][kl][i]);
 				}
 			}
@@ -337,301 +373,204 @@ void GC::getDuals(IloNumArray2 * gamma, IloNumArray3 * alpha, IloNumArray3 * pi,
 
 }
 
-
-double GC::getGAP(){
+float GC::getGAP(){
 	return 100*(1 - lb/ub);
 }
 
-void GC::Solve(Graph *substrate, std::vector<Request*> requests, bool location, bool delay, bool resilience, int *y_, Branch *branch, unsigned int *saida){
-
-	this->substrate = substrate;
-	this->requests = requests;
-
-	this->location = location;
-
+int GC::Solve(Branch * branch){
 	env = IloEnv();
 	model = IloModel(env);
 	model.setName("Master Problem - Column Generation - Path Generation");
 
 	master = new IloCplex(model);
 
-	// INICIO Estruturas para salvar valores duais ------------
-	IloNumArray3 alpha, pi;
-	IloNumArray2 gamma;
-	IloNumArray beta;
-	
-	alpha = IloNumArray3(env, requests.size());
-	pi = IloNumArray3(env, requests.size());
-	gamma = IloNumArray2(env, requests.size());
+	IloNumArray3 alpha = IloNumArray3(env, data->numberVns());
+	IloNumArray3 pi = IloNumArray3(env, data->numberVns());
+	IloNumArray2 gamma = IloNumArray2(env, data->numberVns());
 
-	for(int v=0; v<requests.size(); v++){
-		alpha[v] = IloNumArray2(env, requests[v]->getGraph()->getM());
-		pi[v] = IloNumArray2(env, requests[v]->getGraph()->getM());
+	for(int v=0; v<data->numberVns(); v++){
+		alpha[v] = IloNumArray2(env, data->getRequest(v)->getGraph()->getM());
+		pi[v] = IloNumArray2(env, data->getRequest(v)->getGraph()->getM());
 
-		gamma[v] = IloNumArray(env, requests[v]->getGraph()->getM());
+		gamma[v] = IloNumArray(env, data->getRequest(v)->getGraph()->getM());
 
-		for(int kl=0; kl<requests[v]->getGraph()->getM(); kl++){
-			alpha[v][kl] = IloNumArray(env, substrate->getN());
-			pi[v][kl] = IloNumArray(env, substrate->getN());
+		for(int kl=0; kl<data->getRequest(v)->getGraph()->getM(); kl++){
+			alpha[v][kl] = IloNumArray(env, data->getSubstrate()->getN());
+			pi[v][kl] = IloNumArray(env, data->getSubstrate()->getN());
 		}
 	}
 
-	beta = IloNumArray(env, substrate->getM());
-	// FIM Estruturas para salvar valores duais ------------
+	IloNumArray beta = IloNumArray(env, data->getSubstrate()->getM());
 
-	// Inicializa Modelo
-	CreateVariables();
-	CreateObjectiveFunction();
-	CreateConstraints();
+	BuildModel();
 
 	SetCplexParameters();
 
-	Pricing * p = new Pricing();
+	pricing = new Pricing();
 	tempoSub = tempoMaster = 0.0;
-	double init, end;
+	float init, end;
 
-	// Colunas Artificiais == Branching
-	/*if(this->id == 1){
-		for(int v=0; v<requests.size(); v++){
-			for(int kl=0; kl<requests[v]->getGraph()->getM(); kl++){
-				Column c(v, kl);
-				c.custoFO = M;
-				parentPool.push_back(c);
-			}
-		}
-	}*/
-
-	//cout << "Branching decisions:" << endl;
 	for(int b=0; b<branchs.size(); b++){
-
-	/*	if(branchs[b].tipo_branch == 3){
-			cout << "y " << branchs[b].v << " = " << branchs[b].valor << endl;
-		} else if(branchs[b].tipo_branch == 2){
-			cout << "x " << branchs[b].v << " : " << branchs[b].x << " : " << branchs[b].y << " = " << branchs[b].valor << endl;
-		} else if(branchs[b].tipo_branch == 1){
-			cout << "z " << branchs[b].v << " : " << branchs[b].x << " : " << branchs[b].y << " = " << branchs[b].valor << endl;
-		}*/
-
-		if(branchs[b].tipo_branch == 3){
-			y[branchs[b].v].setBounds(branchs[b].valor, branchs[b].valor);
-		} else if(branchs[b].tipo_branch == 1){
+		if(branchs[b].tipo_branch == 1){
 			int v = branchs[b].v;
 			int k = branchs[b].x;
 			int i = branchs[b].y;
 			int valor = branchs[b].valor;
 
 			z[v][k][i].setBounds(valor, valor);
-		} 
-	}
-
-	std::vector<Column> colunas = std::vector<Column>();
-	addColumns(parentPool);
-	gCols = nCols;
-
-	for(int b=0; b<branchs.size(); b++){
+		}
+		
 		if(branchs[b].tipo_branch == 3){
 			y[branchs[b].v].setBounds(branchs[b].valor, branchs[b].valor);
 		}
 	}
 
+	std::vector<Column> colunas = std::vector<Column>();
+	AddColumns(parentPool);
+	gCols = nCols;
 
 	while(true){
 		init = get_time();
 		if(!master->solve()){
-			this->ub = -INFINITY;
-			delete p;
-			delete master;
-			env.end();
-			return;
+			return 0;
 		}
 		end =  get_time();
 		tempoMaster += end - init;
 
-		//cout << " ~ " << master->getObjValue() << endl;
-
 		getDuals(&gamma, &alpha, &pi, &beta);
 
 		init = get_time();
-		p->Solve(substrate, requests, location, delay, resilience, gamma, alpha, pi, beta, &colunas, forbidden, branchs);
+		pricing->Solve(data->getSubstrate(), data->requests_, data->getLocation(), data->getDelay(), data->getResilience(), gamma, alpha, pi, beta, &colunas, forbidden, branchs);
 		end =  get_time();
 		tempoSub += end - init;
 
-			// Resolver Pricing
 		if(colunas.size() == 0)
 			break;
 
-		addColumns(colunas);
+		AddColumns(colunas);
 		colunas.clear();
 	}
 	gCols = nCols - gCols;
+
+	//master->exportModel("master.lp");
+	
+	GenerateCoverCuts();
 
 	tempoRelaxacao = tempoMaster + tempoSub;
 	tempoTotal = tempoRelaxacao;
 
 	this->ub = master->getObjValue();
-	*saida = 0;
 
+	// Artificial Variable Used
 	for (int m = 0; m < lambda.getSize(); m++) {
-		double value = master->getValue(lambda[m]);
+		float value = master->getValue(lambda[m]);
 		if(value >= 0.001 && pool[m].custoFO == -5000){
-			this->ub = -INFINITY;
-			delete p;
-			delete master;
-			env.end();
-			return;
+			return 0;
 		}
 	}
 
-	// Existe y fracionário?
-	double mais_frac = 0.001;
-	for (int v = 0; v < requests.size(); v++){
-		double value = master->getValue(y[v]);
-		//cout << y[v] << " " << value << endl;
-		if(abs(value - round(value))>mais_frac){
+	branch->v = branch->x = branch->y = -1;
+
+	float mais_frac = 0.001;
+
+	for (int v = 0; v < data->numberVns(); v++){
+		float value = master->getValue(y[v]);
+		if(abs(value - round(value)) > mais_frac){
 			mais_frac = abs(value - round(value));
 			sol_inteira = false;
-			*saida = 1;
-			*y_ = v;
 			branch->v = v;
 			branch->tipo_branch = 3;
 		}
 	}
 
-	if(*saida == 0){
-		mais_frac = 0.001;
-		for (int v = 0; v < requests.size(); v++) {
-			for (int k = 0; k < requests[v]->getGraph()->getN(); k++) {
-				for (int i = 0; i < substrate->getN(); i++) {
-					if (location && requests[v]->getGraph()->getDist(k, i) > requests[v]->getMaxD())
-						continue;
-					double value = master->getValue(z[v][k][i]);
-					//if(value)
-					//cout << z[v][k][i] << " " << value << endl;
-					if(abs(value - round(value))>mais_frac){
-						mais_frac = abs(value - round(value));
-						sol_inteira = false;
-						*saida = 1;
+	if(!sol_inteira)
+	{
+		return 1;
+	}
 
-						branch->v = v;
-						branch->x = k;
-						branch->y = i;
-						branch->tipo_branch = 1;
-					}
+	for (int v = 0; v < data->numberVns(); v++) {
+		for (int k = 0; k < data->getRequest(v)->getGraph()->getN(); k++) {
+			for (int i = 0; i < data->getSubstrate()->getN(); i++) {
+				if (data->getLocation() && data->getRequest(v)->getGraph()->getDist(k, i) > data->getRequest(v)->getMaxD())
+					continue;
+				float value = master->getValue(z[v][k][i]);
+				
+				if(abs(value - round(value))>mais_frac){
+					mais_frac = abs(value - round(value));
+					sol_inteira = false;
+
+					branch->v = v;
+					branch->x = k;
+					branch->y = i;
+					branch->tipo_branch = 1;
 				}
 			}
 		}
+	}
+
+	if(!sol_inteira)
+	{
+		return 1;
 	}
 
 	// Existe lambda fracionário?
-	if(*saida == 0){
-		mais_frac = 0.001;
 
-		double *** uso = new double**[requests.size()];
-		for (int v = 0; v < requests.size(); v++) {
-			uso[v] = new double*[requests[v]->getGraph()->getM()];
-			for (int kl = 0; kl < requests[v]->getGraph()->getM(); kl++) {
-				uso[v][kl] = new double[substrate->getM()];
-				for(int ij=0; ij<substrate->getM(); ij++){
-					uso[v][kl][ij] = 0.0;
-				}
+	float *** uso = new float**[data->numberVns()];
+	for (int v = 0; v < data->numberVns(); v++) {
+		uso[v] = new float*[data->getRequest(v)->getGraph()->getM()];
+		for (int kl = 0; kl < data->getRequest(v)->getGraph()->getM(); kl++) {
+			uso[v][kl] = new float[data->getSubstrate()->getM()];
+			for(int ij=0; ij<data->getSubstrate()->getM(); ij++){
+				uso[v][kl][ij] = 0.0;
 			}
-		}
-
-		for (int m = 0; m < lambda.getSize(); m++) {
-			double value = master->getValue(lambda[m]);
-			//if(value)
-			//	cout << lambda[m] << " " << value << endl;
-
-			value = abs(value - round(value));
-			
-			double valorLambda = master->getValue(lambda[m]);
-			
-			if(value >= 0.001)
-				sol_inteira = false;
-
-			int v = pool[m].v;
-			int kl = pool[m].kl;
-
-			std::vector<Edge> edges = pool[m].getEdges();
-			for(int e=0; e<edges.size(); e++){
-				int ij = edges[e].getId();
-				
-				uso[v][kl][ij] += valorLambda;
-
-				
-			}
-		}
-
-		double maior_ = 0.0;
-		for (int v = 0; v < requests.size(); v++) {
-			for (int kl = 0; kl < requests[v]->getGraph()->getM(); kl++) {
-				for(int ij=0; ij<substrate->getM(); ij++){
-
-					if(abs(uso[v][kl][ij] - round(uso[v][kl][ij])) > maior_){
-						maior_ = abs(uso[v][kl][ij] - round(uso[v][kl][ij]));
-
-						branch->v = v;
-						branch->x = kl;
-						branch->y = ij;
-						branch->tipo_branch = 2;
-
-						*saida = 1;
-					}
-				}
-			}
-		}
-
-	}
-
-	if(sol_inteira){
-		//cout << "A solução é inteira!" << endl;
-		this->lb = this->ub;
-	 } else {
-
-	 	std::vector<int> lista = std::vector<int>();
-
-	 	for(int p_=0; p_<pool.size(); p_++){
-	 		if(master->getValue(lambda[p_]) <= 0){
-	 			lista.push_back(p_);
-	 		}
-	 	}
-
-	 	for (int v = 0; v < requests.size(); v++) {
-	 		for (int k = 0; k < requests[v]->getGraph()->getN(); k++) {
-	 			for (int i = 0; i < substrate->getN(); i++) {
-	 				if (location && requests[v]->getGraph()->getDist(k, i) > requests[v]->getMaxD())
-	 					continue;
-	 				model.add(IloConversion(env, z[v][k][i], ILOBOOL));
-	 			}
-	 		}
-	 	}
-	 	model.add(IloConversion(env, lambda, ILOBOOL));
-	 	model.add(IloConversion(env, y, ILOBOOL));
-
-	 	master->setParam(IloCplex::TiLim, 10.0);
-	 	//master->setParam(IloCplex::IntSolLim, 1);
-
-		for(int l_=0; l_<lista.size(); l_++){
-			int p_ = lista[l_];
-			lambda[p_].setBounds(0, 0);
-		}
-
-	 	try{
-			init = get_time();
-			if(master->solve())
-				this->lb = master->getObjValue();
-		else
-			this->lb = -INFINITY;
-		end = get_time();
-		tempoTotal += end - init;
-		//cout << "Custo Inteiro: " << this->ub << endl;
-		} catch (IloException e){
-			cout << "Houve erro!" << endl;
 		}
 	}
 
-	delete p;
-	delete master;
-	env.end();
-	return;
+	for (int m = 0; m < lambda.getSize(); m++) {
+		float value = master->getValue(lambda[m]);
+		
+		value = abs(value - round(value));
+			
+		float valorLambda = master->getValue(lambda[m]);
+			
+		if(value >= 0.001)
+			sol_inteira = false;
+
+		int v = pool[m].v;
+		int kl = pool[m].kl;
+
+		std::vector<Edge> edges = pool[m].getEdges();
+		for(int e=0; e<edges.size(); e++){
+			int ij = edges[e].getId();
+				
+			uso[v][kl][ij] += valorLambda;
+
+				
+		}
+	}
+
+	float maior_ = 0.0;
+	for (int v = 0; v < data->numberVns(); v++) {
+		for (int kl = 0; kl < data->getRequest(v)->getGraph()->getM(); kl++) {
+			for(int ij=0; ij<data->getSubstrate()->getM(); ij++){
+
+				if(abs(uso[v][kl][ij] - round(uso[v][kl][ij])) > maior_){
+					maior_ = abs(uso[v][kl][ij] - round(uso[v][kl][ij]));
+
+					branch->v = v;
+					branch->x = kl;
+					branch->y = ij;
+					branch->tipo_branch = 2;
+				}
+			}
+		}
+	}
+
+	if(!sol_inteira){
+		return 1;
+	}
+
+	this->lb = this->ub;
+
+	return 2;
 }

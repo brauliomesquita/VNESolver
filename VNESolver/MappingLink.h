@@ -5,14 +5,14 @@
 
 class MappingLink {
 	Edge phys;
-	double BW;
+	float BW;
 
 	public:
 		MappingLink(Edge l);
 		void setPhysEdge(Edge p);
 		Edge getPhysEdge();
-		double getBW();
-		void setBW(double bw);
+		float getBW();
+		void setBW(float bw);
 };
 
 #endif /* GC_H */

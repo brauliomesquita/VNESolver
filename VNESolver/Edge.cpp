@@ -1,6 +1,6 @@
 #include "Edge.h"
 
-Edge::Edge (int id, int o, int d, double b, double del) {
+Edge::Edge (int id, int o, int d, float b, float del) {
     this->id = id;
     this->orig = o;
     this->dest = d;
@@ -23,11 +23,11 @@ int Edge::getId(){
     return this->dest;
 }
 
- double Edge::getBW(){
+ float Edge::getBW(){
     return this->bw;
 }
 
- double Edge::getDelay(){
+ float Edge::getDelay(){
     return this->delay;
 }
 

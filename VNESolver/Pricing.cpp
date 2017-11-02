@@ -188,7 +188,6 @@ void Pricing::Solve(Graph *substrate, std::vector<Request*> requests, bool locat
 					exprB += x[j][i];
 				}
 
-				IloExpr exprL(subEnv);
 				if (!location || requests[v]->getGraph()->getDist(k, i) <= requests[v]->getMaxD())
 					exprC += zk[i];
 
@@ -196,7 +195,6 @@ void Pricing::Solve(Graph *substrate, std::vector<Request*> requests, bool locat
 					exprD += zl[i];
 
 				subModel.add(exprA - exprB == exprC - exprD);
-
 			}
 
 		try{
@@ -241,7 +239,7 @@ void Pricing::Solve(Graph *substrate, std::vector<Request*> requests, bool locat
 				if(problem->getObjValue() > 0.01){
 					Column c(v, kl);
 
-					double custo = 0;
+					float custo = 0;
 					for (int i = 0; i < substrate->getN(); i++) {
 						for (int j = i; j < substrate->getN(); j++) {
 							if (substrate->getAdj(i, j) != -1){
