@@ -78,19 +78,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="BP.h" />
+    <ClInclude Include="Branch.h" />
+    <ClInclude Include="Column.h" />
     <ClInclude Include="Edge.h" />
+    <ClInclude Include="GC.h" />
     <ClInclude Include="Graph.h" />
     <ClInclude Include="ILPModel.h" />
     <ClInclude Include="MappingEdge.h" />
     <ClInclude Include="MappingLink.h" />
     <ClInclude Include="MappingNode.h" />
     <ClInclude Include="Node.h" />
+    <ClInclude Include="Pricing.h" />
     <ClInclude Include="ProblemData.h" />
     <ClInclude Include="Request.h" />
     <ClInclude Include="Utility.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BP.cpp" />
+    <ClCompile Include="Branch.cpp" />
+    <ClCompile Include="Column.cpp" />
     <ClCompile Include="Edge.cpp" />
+    <ClCompile Include="GC.cpp" />
     <ClCompile Include="Graph.cpp" />
     <ClCompile Include="ILPModel.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -98,6 +107,7 @@
     <ClCompile Include="MappingLink.cpp" />
     <ClCompile Include="MappingNode.cpp" />
     <ClCompile Include="Node.cpp" />
+    <ClCompile Include="Pricing.cpp" />
     <ClCompile Include="ProblemData.cpp" />
     <ClCompile Include="Request.cpp" />
     <ClCompile Include="Utility.cpp" />

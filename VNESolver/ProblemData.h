@@ -11,7 +11,7 @@ using namespace std;
 
 class ProblemData {
 	Graph *substrate_;
-	std::vector<Request*> requests_;
+	
 	int number_vns_;
 
 	// Parameters
@@ -39,6 +39,8 @@ public:
 	bool getResilience() {return resilience_; }
 	int getOptimizationObjective() { return fo_; }
 	int getTimeLimit() { return time_limit_; }
+
+	std::vector<Request*> requests_;
 };
 
 #endif

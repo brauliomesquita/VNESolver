@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <iostream>
 #include "ProblemData.h"
+#include "BP.h"
 
 using namespace std;
 
@@ -22,6 +23,9 @@ int main(int argc, char *argv[])
 
 	ILPModel ilp;
 	ilp.Solve(data);
+
+	BP bp;
+	bp.Solve(data);
 
 	return 0;
 }
