@@ -1,6 +1,8 @@
 #ifndef KNAPSACK_H
 #define KNAPSACK_H
 
+#include <cmath>
+
 #include "Utility.h"
 
 class KnapsackProblem

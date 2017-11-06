@@ -1,7 +1,7 @@
 #include "GC.h"
 
 GC::GC(ProblemData * data):	tempoMaster(0), tempoSub(0), tempoTotal(0), tempoRelaxacao(0),
-							ub(-INFINITY), lb(INFINITY), parentUB(-INFINITY),
+							ub(INFINITY), lb(-INFINITY), parentUB(INFINITY),
 							id(0), sol_inteira(false), nCols(0), gCols(0)
 {
 	this->data = data;
@@ -10,10 +10,23 @@ GC::GC(ProblemData * data):	tempoMaster(0), tempoSub(0), tempoTotal(0), tempoRel
 	parentPool = std::vector<Column>();
 	forbidden = std::vector<Column>();
 	branchs = std::vector<Branch>();
+
+	for(int v=0; v<data->numberVns(); v++)
+	{
+		for(int kl = 0; kl < data->getRequest(v)->getGraph()->getM(); kl++){
+			Column * fakeColumn = new Column(v, kl);
+			fakeColumn->custoFO = 5000;
+			fakeColumn->l = -1;
+			fakeColumn->k = -1;
+
+			parentPool.push_back(*fakeColumn);
+		}
+	}
+
 }
 
 GC::GC(GC * parent):	tempoMaster(0), tempoSub(0), tempoTotal(0), tempoRelaxacao(0),
-						ub(-INFINITY), lb(INFINITY), id(-1)
+						ub(INFINITY), lb(-INFINITY), id(-1)
 {
 	this->data = parent->data;
 	
@@ -31,33 +44,35 @@ GC::~GC(){
 	env.end();
 }
 
-void GC::GenerateCoverCuts(){
-	
-	if(master->getStatus() != IloAlgorithm::Optimal)
-		return;
-
-	// Para cada Restrição:
-	for(int c = 0; c < constraint_bw.getSize(); c++){
+bool GC::CoverCut(IloRangeArray constraints)
+{
+	// For each constraint
+	for(int c = 0; c < constraints.getSize(); c++)
+	{
 		int num_vars = 0;
 
-		for (IloExpr::LinearIterator it = constraint_bw[c].getLinearIterator(); it.ok();++it) {
+		// Get the variables in the constraint
+		for (IloExpr::LinearIterator it = constraints[c].getLinearIterator(); it.ok();++it)
+		{
 			Weights[num_vars] = it.getCoef();
 			Values[num_vars] = master->getValue(it.getVar());
 			++num_vars;
 		}
 
-		if(!num_vars){
+		if(!num_vars)
 			continue;
-		}
 
-		float rhs = constraint_bw[c].getUB();
+		float rhs = constraints[c].getUB();
 
 		// Solve Knapsack problem
 		IloEnv env2;
 		IloModel model2(env2);
 		IloCplex cplex2(env2);
-
 		IloObjective objective2(env2);
+
+		cplex2.setParam(IloCplex::MIPDisplay, 0);
+		cplex2.setParam(IloCplex::SimDisplay, 0);
+		cplex2.setParam(IloCplex::SiftDisplay, 0);
 
 		IloIntVarArray x(env2, num_vars);
 		for(int i=0; i<num_vars; i++)
@@ -68,8 +83,7 @@ void GC::GenerateCoverCuts(){
 		}
 		model2.add(x);
 
-		IloExpr obj2(env2);
-		IloExpr expr2(env2);
+		IloExpr obj2(env2), expr2(env2);
 		for(int i=0; i<num_vars; i++)
 		{
 			obj2 += (1 - Values[i]) *  x[i];
@@ -77,20 +91,20 @@ void GC::GenerateCoverCuts(){
 		}
 
 		model2.add(IloMinimize(env2, obj2));
-
 		model2.add(expr2 >= rhs + 0.001);
 
 		cplex2.extract(model2);
 		//cplex2.exportModel("knapsack_model.lp");
+
 		if(!cplex2.solve())
 			continue;
 
 		if(cplex2.getObjValue() < 1)
 		{
 			IloExpr ccut(env);
-			int count = 0;
-			int contador = 0;
-			for (IloExpr::LinearIterator it = constraint_bw[c].getLinearIterator(); it.ok();++it) {
+			int count = 0, contador = 0;
+			for (IloExpr::LinearIterator it = constraints[c].getLinearIterator(); it.ok(); ++it)
+			{
 				if(cplex2.getIntValue(x[count]) == 1)
 				{
 					ccut += it.getVar();
@@ -100,21 +114,24 @@ void GC::GenerateCoverCuts(){
 			}
 
 			cover_cuts_.add(ccut <= contador - 1);
-
-			cout << "here" << endl;
 		}
-
 	}
+
+	return false;
+}
+
+void GC::GenerateCoverCuts(){
+	
+	if(master->getStatus() != IloAlgorithm::Optimal)
+		return;
+
+	CoverCut(constraint_bw);
+	CoverCut(constraint_cpu);
 
 	model.add(cover_cuts_);
 
 	master->extract(model);
 	master->exportModel("master_cover_cuts.lp");
-
-	// Roda Knapsack problem
-
-	// Adiciona nova restrição
-
 }
 
 void GC::addBranchLambda(int m, int valor){
@@ -136,8 +153,6 @@ void GC::addBranch(Branch branch, int valor){
 		int v = branch.v;
 		int kl = branch.x;
 		int ij = branch.y;
-
-		int valor = branch.valor;
 
 		for(int p=0; p<parentPool.size(); p++){
 			
@@ -229,12 +244,13 @@ void GC::CreateVariables(){
 
 void GC::CreateObjectiveFunction() {
 
-	objective = IloAdd(model, IloMaximize(env));
+	objective = IloAdd(model, IloMinimize(env));
 
 	IloExpr obj(env);
 
 	for (int v = 0; v < data->numberVns(); v++) {
-		obj += data->getRequest(v)->getProfit() * y[v];
+//		obj += data->getRequest(v)->getProfit() * y[v];
+		obj += 10000 * (1 - y[v]);
 	}
 
 	objective.setExpr(obj);
@@ -280,6 +296,7 @@ void GC::CreateConstraints() {
 	}
 
 	/* Restrição 4: CPU */
+	constraint_cpu = OneDimRange(env, data->getSubstrate()->getN());
 	for (int i = 0; i < data->getSubstrate()->getN(); i++) {
 		IloExpr expr4(env);
 		bool flag = false;
@@ -293,8 +310,9 @@ void GC::CreateConstraints() {
 			}
 		}
 		if (flag)
-			model.add(expr4 - data->getSubstrate()->getNodes()[i].getCPU() <= 0);
+			constraint_cpu[i] = expr4 <= data->getSubstrate()->getNodes()[i].getCPU();
 	}
+	model.add(constraint_cpu);
 
 	char cName[256];
 
@@ -371,7 +389,12 @@ void GC::AddColumns(std::vector<Column> colunas){
 		int kl = colunas[m].kl;
 
 		char buffer[30];
-		sprintf(buffer, "lambda_%d_%d_%d", v, kl, lambda.getSize());	
+		if(colunas[m].custoFO == 5000)
+		{
+			sprintf(buffer, "lambda_%d_%d_ART", v, kl);
+		} else {
+			sprintf(buffer, "lambda_%d_%d_%d", v, kl, lambda.getSize());
+		}
 
 		IloNumVar new_variable;
 
@@ -379,8 +402,9 @@ void GC::AddColumns(std::vector<Column> colunas){
 		lambda.add(new_variable);
 		model.add(new_variable);
 
-		if(colunas[m].custoFO == -5000)
-			objective.setLinearCoef(new_variable, colunas[m].custoFO);
+		//if(colunas[m].custoFO == 5000)
+		objective.setLinearCoef(new_variable, colunas[m].custoFO);
+
 		constraint_lambda[v][kl].setLinearCoef(new_variable, 1);
 
 		std::vector<Edge> edges = colunas[m].getEdges();
@@ -501,6 +525,9 @@ int GC::Solve(Branch * branch){
 	std::vector<Column> colunas = std::vector<Column>();
 	AddColumns(parentPool);
 	gCols = nCols;
+	
+	std::ofstream ofs;
+	ofs.open ("genCols", std::ofstream::out);
 
 	while(true){
 		init = get_time();
@@ -517,22 +544,73 @@ int GC::Solve(Branch * branch){
 		end =  get_time();
 		tempoSub += end - init;
 
+		// Loga Colunas Geradas
+		for(int m=0; m < colunas.size(); m++){
+			int v = colunas[m].v;
+			int kl = colunas[m].kl;
+
+			ofs << "lambda_" << v << "_" << kl << "_" << lambda.getSize() + m << "\t";	
+			ofs << "Start: " << colunas[m].k << "\tEnd: " << colunas[m].l << "\t";
+			ofs << "Physical Edges: ";
+			std::vector<Edge> edges = colunas[m].getEdges();
+			for(int e=0; e<edges.size(); e++){
+				int ij = edges[e].getId();
+
+				ofs << ij << " ";
+			}
+
+			ofs << endl;
+		}
+
 		if(colunas.size() == 0)
 			break;
 
 		AddColumns(colunas);
+
+		//master->solve();
+		//GenerateCoverCuts();
+
 		colunas.clear();
 	}
 	gCols = nCols - gCols;
 
-	//master->exportModel("master.lp");
+	master->exportModel("master.lp");
 	
-	GenerateCoverCuts();
+	cout << "Obj Value: " << master->getObjValue() << endl;
+
+#if _DEBUG
+
+	for (int v = 0; v < data->numberVns(); v++){
+		if(master->getValue(y[v]) > 0.0001)
+			cout << y[v].getName() << "\t" << master->getValue(y[v]) << endl;
+	}
+
+	for (int v = 0; v < data->numberVns(); v++) {
+		for (int k = 0; k < data->getRequest(v)->getGraph()->getN(); k++) {
+			for (int i = 0; i < data->getSubstrate()->getN(); i++) {
+				if (data->getLocation() && data->getRequest(v)->getGraph()->getDist(k, i) > data->getRequest(v)->getMaxD())
+					continue;
+				if(master->getValue(z[v][k][i]) > 0.0001)
+					cout << z[v][k][i].getName() << "\t" << master->getValue(z[v][k][i]) << endl;
+			}
+		}
+	}
+
+	for (int m = 0; m < lambda.getSize(); m++) {
+		if(master->getValue(lambda[m]) > 0.0001)
+			cout << lambda[m].getName() << "\t" << master->getValue(lambda[m]) << endl;
+	}
+
+#endif
+
+	master->solve();
+
+	cout << "Obj Value: " << master->getObjValue() << endl;
+
+	this->lb = master->getObjValue();
 
 	tempoRelaxacao = tempoMaster + tempoSub;
 	tempoTotal = tempoRelaxacao;
-
-	this->ub = master->getObjValue();
 
 	// Artificial Variable Used
 	for (int m = 0; m < lambda.getSize(); m++) {
@@ -542,8 +620,9 @@ int GC::Solve(Branch * branch){
 		}
 	}
 
-	branch->v = branch->x = branch->y = -1;
+	branch->v = branch->x = branch->y = branch->valor = -1;
 
+	sol_inteira = true;
 	float mais_frac = 0.001;
 
 	for (int v = 0; v < data->numberVns(); v++){
@@ -617,8 +696,6 @@ int GC::Solve(Branch * branch){
 			int ij = edges[e].getId();
 				
 			uso[v][kl][ij] += valorLambda;
-
-				
 		}
 	}
 
@@ -643,7 +720,7 @@ int GC::Solve(Branch * branch){
 		return 1;
 	}
 
-	this->lb = this->ub;
+	this->ub = this->lb;
 
 	return 2;
 }

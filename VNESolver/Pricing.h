@@ -4,9 +4,9 @@
 #include <ilcplex/ilocplex.h>
 #include <vector>
 
-#include "Request.h"
-#include "Column.h"
 #include "Branch.h"
+#include "Column.h"
+#include "Request.h"
 
 using namespace std;
 

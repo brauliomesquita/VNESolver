@@ -1,6 +1,5 @@
 #include "BP.h"
 
-
 void BP::Solve(ProblemData* data){
 	std::vector<GC*> arvore;
 	GC * raiz = new GC(data);
@@ -12,7 +11,7 @@ void BP::Solve(ProblemData* data){
 	
 	std::vector<Column> solucaoInicial;
 
-	float bestLB = -INFINITY;
+	float bestUB = INFINITY;
 
 	arvore.push_back(raiz);
 
@@ -53,7 +52,7 @@ void BP::Solve(ProblemData* data){
 	ofs << "Maximize Profit" << endl;
 	ofs << endl << endl;
 
-	ofs << "Initial Solution Cost:\t" << bestLB << endl << endl;
+	ofs << "Initial Solution Cost:\t" << bestUB << endl << endl;
 
 	ofs << "Start..." << endl;
 	ofs << left << setw(nameWidth) << setfill(separator) << "ID";
@@ -93,7 +92,7 @@ void BP::Solve(ProblemData* data){
 		GC * gc = arvore[best_index];
 		arvore.erase(arvore.begin() + best_index);
 
-		if(gc->parentUB > bestLB - 0.0001){
+		if(gc->parentUB > bestUB - 0.0001){
 			cout << "Número de colunas: " << gc->parentPool.size() << endl;
 
 			init = get_time();
@@ -107,11 +106,11 @@ void BP::Solve(ProblemData* data){
 			cout << "Custo da Heuristica primal: " << gc->lb << endl;
 			cout << "Tempo Relaxação Raiz: " << gc->tempoTotal << endl;
 
-			if(gc->lb > bestLB){
-				bestLB = gc->lb;
+			if(gc->ub < bestUB){
+				bestUB = gc->ub;
 			}
 
-			if(gc->ub > bestLB){
+			if(gc->lb < bestUB){
 				for(int i=0; i<=1; i++){
 					GC * filho = new GC(gc);
 					filho->addBranch(branch1, i);
@@ -120,7 +119,7 @@ void BP::Solve(ProblemData* data){
 				}
 			}
 
-			worstUB = bestLB;
+			worstUB = bestUB;
 			for(int s=0; s<arvore.size(); s++){
 				if(arvore[s]->parentUB > worstUB){
 					worstUB = arvore[s]->parentUB;
@@ -131,9 +130,9 @@ void BP::Solve(ProblemData* data){
 			ofs << left << setw(nameWidth) << setfill(separator) << gc->id;
 			ofs << left << setw(nameWidth) << setfill(separator) << gc->ub;
 			ofs << left << setw(nameWidth) << setfill(separator) << gc->lb;
-			ofs << left << setw(nameWidth) << setfill(separator) << bestLB;
+			ofs << left << setw(nameWidth) << setfill(separator) << bestUB;
 			ofs << left << setw(nameWidth) << setfill(separator) << worstUB;
-			ofs << left << setw(nameWidth) << setfill(separator) << 100*(1 - bestLB/worstUB);
+			ofs << left << setw(nameWidth) << setfill(separator) << 100*(1 - bestUB/worstUB);
 			ofs << left << setw(nameWidth) << setfill(separator) << gc->nCols;
 			ofs << left << setw(nameWidth) << setfill(separator) << gc->gCols;
 			ofs << left << setw(nameWidth) << setfill(separator) << gc->tempoRelaxacao;
@@ -150,21 +149,21 @@ void BP::Solve(ProblemData* data){
 	//	break;
 	}
 
-	worstUB = bestLB;
+	worstUB = bestUB;
 	for(int s=0; s<arvore.size(); s++){
 		if(arvore[s]->parentUB > worstUB){
 			worstUB = arvore[s]->parentUB;
 		}
 	}
 
-	ofs << "Best Integer: " << bestLB << endl;
+	ofs << "Best Integer: " << bestUB << endl;
 	ofs << "Lower Bound: " << worstUB << endl;
-	ofs << "GAP: " << 100*(1 - bestLB/worstUB) << endl;
+	ofs << "GAP: " << 100*(1 - bestUB/worstUB) << endl;
 	ofs << "Time: " << tempoExecucao << endl;
 
 	ofs << "FINISHED!";
 
-	cout << "Best Solution: " << bestLB << endl;
+	cout << "Best Solution: " << bestUB << endl;
 
 	ofs.close();
 }

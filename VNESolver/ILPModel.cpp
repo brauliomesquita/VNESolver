@@ -115,14 +115,47 @@ float ILPModel::Solve(ProblemData * data) {
 		model.add(y[v]);
 	}
 
-	objective = IloAdd(model, IloMaximize(env));
+	
 
 	IloExpr obj(env);
-	
-	for (int v = 0; v < data->numberVns(); v++) {
-		obj += data->getRequest(v)->getProfit() * y[v];
-		cout << "VN_" << v << " Profit: " << data->getRequest(v)->getProfit() << endl;
+	switch (data->getOptimizationObjective())
+	{
+	case 1:
+		objective = IloAdd(model, IloMinimize(env));
+
+		for (int v = 0; v < data->numberVns(); v++) {
+			obj += 10000 * (1 - y[v]);
+		}
+		
+		for (int i = 0; i < data->getSubstrate()->getN(); i++) {
+			for (int j = 0; j < data->getSubstrate()->getN(); j++) {
+
+				if (data->getSubstrate()->getAdj(i,j) == -1)
+					continue;
+
+				IloExpr expr5(env);
+				for (int v = 0; v < data->numberVns(); v++) {
+					for (int kl = 0; kl < data->getRequest(v)->getGraph()->getM(); kl++) {
+
+						obj += data->getRequest(v)->getGraph()->getEdges()[kl].getBW() * x[v][kl][i][j];
+						//obj += data->getRequest(v)->getGraph()->getEdges()[kl].getBW() * x[v][kl][j][i];
+					}
+				}
+			}
+		}
+
+		break;
+
+	default:
+		objective = IloAdd(model, IloMaximize(env));
+
+		for (int v = 0; v < data->numberVns(); v++) {
+			obj += data->getRequest(v)->getProfit() * y[v];
+			cout << "VN_" << v << " Profit: " << data->getRequest(v)->getProfit() << endl;
+		}
+		break;
 	}
+	
 
 	objective.setExpr(obj);
 	obj.end();
@@ -241,7 +274,38 @@ float ILPModel::Solve(ProblemData * data) {
 	try {
 		if(problem->solve()){
 			cout << "Best Solution Cost: " << problem->getObjValue() << endl;
+
+			for (int v = 0; v < data->numberVns(); v++){
+				cout << y[v].getName() << "\t" << problem->getValue(y[v]) << endl;
+			}
+
+			for (int v = 0; v < data->numberVns(); v++) {
+				for (int k = 0; k < data->getRequest(v)->getGraph()->getN(); k++) {
+					for (int i = 0; i < data->getSubstrate()->getN(); i++) {
+						if (data->getLocation() && data->getRequest(v)->getGraph()->getDist(k, i) > data->getRequest(v)->getMaxD())
+							continue;
+						cout << z[v][k][i].getName() << "\t" << problem->getValue(z[v][k][i]) << endl;
+					}
+				}
+			}
+
+			for (int i = 0; i < data->getSubstrate()->getN(); i++) {
+				for (int j = 0; j < data->getSubstrate()->getN(); j++) {
+
+					if (data->getSubstrate()->getAdj(i,j) == -1)
+						continue;
+
+					for (int v = 0; v < data->numberVns(); v++) {
+						for (int kl = 0; kl < data->getRequest(v)->getGraph()->getM(); kl++) {
+
+							cout << x[v][kl][i][j].getName() << "\t" << problem->getValue(x[v][kl][i][j]) << endl;
+							cout << x[v][kl][j][i].getName() << "\t" << problem->getValue(x[v][kl][j][i]) << endl;
+						}
+					}
+				}
+			}
 		}
+
 	} catch (IloException& e) {
 		cerr << "ERROR: " << e.getMessage() << endl;
 	} catch (...) {

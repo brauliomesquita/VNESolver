@@ -102,7 +102,6 @@ void Pricing::Solve(Graph *substrate, std::vector<Request*> requests, bool locat
 					if(kl_ != kl)
 						continue;
 					
-					
 					int ij = branchs[b].y;
 
 					int valor = branchs[b].valor;
@@ -116,15 +115,15 @@ void Pricing::Solve(Graph *substrate, std::vector<Request*> requests, bool locat
 
 			}
 
-			objective = IloAdd(subModel, IloMaximize(subEnv));
+			objective = IloAdd(subModel, IloMinimize(subEnv));
 
 			IloExpr obj(subEnv);
 
 			for(int i = 0; i<substrate->getN(); i++){
 				for(int j = i; j<substrate->getN(); j++){
 					if(substrate->getAdj(i, j)!=-1){
-						obj -= beta[substrate->getAdj(i, j)] * requests[v]->getGraph()->getEdges()[kl].getBW() * x[i][j];
-						obj -= beta[substrate->getAdj(i, j)] * requests[v]->getGraph()->getEdges()[kl].getBW() * x[j][i];
+						obj += (1 - beta[substrate->getAdj(i, j)]) * requests[v]->getGraph()->getEdges()[kl].getBW() * x[i][j];
+						obj += (1 - beta[substrate->getAdj(i, j)]) * requests[v]->getGraph()->getEdges()[kl].getBW() * x[j][i];
 					}
 				}
 			}
@@ -206,10 +205,10 @@ void Pricing::Solve(Graph *substrate, std::vector<Request*> requests, bool locat
 					continue;
 				}
 
-				int k = forbidden[f].k;
-				int l = forbidden[f].l;
+				int fk = forbidden[f].k;
+				int fl = forbidden[f].l;
 
-				expr += zk[k] + zl[l];
+				expr += zk[fk] + zl[fl];
 
 				std::vector<Edge> fEdges = forbidden[f].getEdges();
 
@@ -236,7 +235,7 @@ void Pricing::Solve(Graph *substrate, std::vector<Request*> requests, bool locat
 				
 				//cout << "Pricing cost: " << problem->getObjValue() << endl;
 
-				if(problem->getObjValue() > 0.01){
+				if(problem->getObjValue() <= -0.01){
 					Column c(v, kl);
 
 					float custo = 0;
@@ -246,7 +245,7 @@ void Pricing::Solve(Graph *substrate, std::vector<Request*> requests, bool locat
 								if(problem->getIntValue(x[i][j]) == 1 || problem->getIntValue(x[j][i]) == 1){
 									
 									c.addEdge(substrate->getEdges()[substrate->getAdj(i, j)]);
-									custo += substrate->getCost(substrate->getAdj(i,j)) * requests[v]->getGraph()->getEdges()[kl].getBW();
+									custo += /*substrate->getCost(substrate->getAdj(i,j)) */ requests[v]->getGraph()->getEdges()[kl].getBW();
 								}
 							}
 						}

@@ -10,8 +10,13 @@ ProblemData::ProblemData()
 	this->delay_ = false;
 	this->resilience_ = false;
 
-	this->fo_ = 0;
+	this->ilp_ = false;
+	this->bcp_ = false;
+
+	this->fo_ = 1;
 	this->time_limit_ = 3600;
+
+	this->outputFile_ = "";
 }
 
 ProblemData::~ProblemData()
@@ -24,8 +29,11 @@ ProblemData::~ProblemData()
 	requests_.clear();
 }
 
-bool ProblemData::ReadInputData(char* argv[])
+bool ProblemData::ReadInputData(int argc, char* argv[])
 {
+	if(!ReadParameters(argc, argv))
+		return false;
+
 	if(!this->ReadSubstrate(argv[1]))
 		return false;
 	
@@ -36,6 +44,54 @@ bool ProblemData::ReadInputData(char* argv[])
 	
 	for(int v=0; v<numberVns(); v++)
 		this->getRequest(v)->getGraph()->setDist(this->getSubstrate());
+
+	return true;
+}
+
+bool ProblemData::ReadParameters(int argc, char* argv[])
+{
+	try {
+		for ( int i = 1; i < argc; i++ )
+		{
+			if (!strcmp(argv[i], "-ilp"))
+				this->ilp_ = true;
+
+			if (!strcmp(argv[i], "-bcp"))
+				this->bcp_ = true;
+
+			if (!strcmp(argv[i], "-location"))
+				this->location_ = true;
+
+			if (!strcmp(argv[i], "-delay"))
+				this->delay_ = true;
+
+			if (!strcmp(argv[i], "-resilience"))
+				this->resilience_ = true;
+
+			if (!strcmp(argv[i], "-out"))
+				this->outputFile_ = argv[++i];
+
+			if (!strcmp(argv[i], "-time"))
+				this->time_limit_ = atoi(argv[++i]);
+		}
+	}
+	catch(...)
+	{
+		cout << "There has been an error while reading parameters." << endl;
+		exit(-1);
+	}
+
+	if(!this->ilp_ && !this->bcp_)
+	{
+		cout << "No algorithm was specified! ILP will be used." << endl;
+		this->ilp_ = true;
+	}
+
+	if(this->ilp_ && this->bcp_)
+	{
+		cout << "Both ILP and BCP algorithms have been chosen to solve!" << endl;
+		return false;
+	}
 
 	return true;
 }

@@ -1,8 +1,9 @@
 #ifndef MAPEDGE_H
 #define MAPEDGE_H
 
-#include "Edge.h"
 #include <vector>
+
+#include "Edge.h"
 
 class MappingEdge {
 	Edge virt;

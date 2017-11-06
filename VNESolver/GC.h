@@ -3,17 +3,12 @@
 
 #include <ilcplex/ilocplex.h>
 #include <vector>
-#include <malloc.h>
-#include <fstream>
 
-#include "Request.h"
-#include "Column.h"
-#include "MappingNode.h"
-#include "Pricing.h"
-#include "Utility.h"
 #include "Branch.h"
+#include "Column.h"
+#include "Pricing.h"
 #include "ProblemData.h";
-#include "KnapsackProblem.h"
+#include "Utility.h"
 
 using namespace std;
 
@@ -43,6 +38,7 @@ class GC {
 
 	/* Restrições */
 	OneDimRange constraint_bw;
+	OneDimRange constraint_cpu;
 	TwoDimRange constraint_lambda;
 	ThreeDimRange constraint_saida;
 	ThreeDimRange constraint_entrada;
@@ -68,6 +64,8 @@ class GC {
 		void getDuals(IloNumArray2 * gamma, IloNumArray3 * alpha, IloNumArray3 * pi, IloNumArray * beta);
 		void SetCplexParameters();
 		float getGAP();
+
+		bool CoverCut(IloRangeArray constraints);
 
 		void addBranchLambda(int m, int valor);
 		void addBranch(Branch branch, int valor);

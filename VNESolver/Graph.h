@@ -1,12 +1,10 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
-#include "Node.h"
 #include "Edge.h"
+#include "Node.h"
 
 #include <vector>
-#include <cmath>
-#include <malloc.h>
 
 class Graph {
 
