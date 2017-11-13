@@ -115,13 +115,13 @@ bool ProblemData::ReadSubstrate(char * subGraph) {
 	for (int i = 0; i < substrate_->getN(); i++) {
 		fscanf(arquivo, "%d %d %f", &x, &y, &cpu);
 
-		substrate_->addNode(Node(i, x, y, cpu));
+		substrate_->addNode(Node(i, x, y, round(cpu)));
 	}
 
 	for (int i = 0; i < substrate_->getM(); i++) {
 		fscanf(arquivo, "%d %d %f %f", &k, &l, &banda, &atraso);
 
-		substrate_->addEdge(Edge(i, k, l, banda, atraso));
+		substrate_->addEdge(Edge(i, k, l, round(banda), atraso));
 	}
 
 	return true;
@@ -161,14 +161,14 @@ bool ProblemData::ReadVNsFolder(char * folder, int numberVNs) {
 		for (int i = 0; i < g->getN(); i++) {
 			fscanf(arquivo, "%d %d %f", &x, &y, &cpu);
 
-			g->addNode(Node(i, x, y, cpu));
+			g->addNode(Node(i, x, y, round(cpu)));
 			profit += cpu;
 		}
 
 		for (int i = 0; i < g->getM(); i++) {
 			fscanf(arquivo, "%d %d %f %f", &k, &l, &banda, &atraso);
 
-			g->addEdge(Edge(i, k, l, banda, atraso));
+			g->addEdge(Edge(i, k, l, round(banda), atraso));
 			profit += banda;
 		}
 

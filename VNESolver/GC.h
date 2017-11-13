@@ -8,6 +8,7 @@
 #include "Column.h"
 #include "Pricing.h"
 #include "ProblemData.h";
+#include "KnapsackProblem.h"
 #include "Utility.h"
 
 using namespace std;
@@ -54,7 +55,7 @@ class GC {
 		GC(ProblemData * data);
 		GC(GC * parent);
 	~GC();
-		void GenerateCoverCuts();
+		bool GenerateCoverCuts();
 		int Solve(Branch * branch);
 		void BuildModel();	
 		void CreateVariables();

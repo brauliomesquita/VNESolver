@@ -1,31 +1,63 @@
-#include "KnapsackProblem.h"
-
-KnapsackProblem::KnapsackProblem(void)
-{
-
-}
-
-
-KnapsackProblem::~KnapsackProblem(void)
-{
-
-}
+﻿#include "KnapsackProblem.h"
+#include "GC.h"
 
 float KnapsackProblem::Solve(int Capacity, float Weight[], float Value[], int N)
 {
-	int i, w;
+	//Set f(k,r) := ∞ for k = 1,..., n and r = 0,..., b. Set f(0, 0) := 0.
+	//Set g(k) := ∞ for k = 1,..., n.
+	for(int k = 0; k < N; k++)
+	{
+		for(int r = 0; r < Capacity; r++)
+		{
+			F[k][r] = INFINITY;
+		}
+		G[k] = INFINITY;
+	}
+	F[0][0] = 0;
 
-	for (i = 0; i <= N; i++){
-		for (w = 0; w <= Capacity; w++){
-			if (i == 0 || w == 0){
-				K[i][w] = 0;
-			} else if (Weight[i-1] <= w) {
-				K[i][w] = max(Value[i-1] + K[i-1][(int)floor(w - Weight[i-1])], K[i-1][w]);
-			} else {
-				K[i][w] = K[i-1][w];
+	//For k = 1,..., n
+	//	For r = 0,..., b
+	//		If f (k − 1,r) < f (k,r)
+	//			Set f (k,r) := f (k − 1,r).
+	for(int k = 1; k < N; k++)
+	{
+		int weightK = (int)Weight[k];
+		for(int r = 0; r <= Capacity; r++)
+		{
+			if(F[k-1][r] < F[k][r])
+			{
+				F[k][r] = F[k-1][r];
 			}
 		}
-	}
 
-	return K[N][Capacity];
+		//For r = 0,..., b − ak
+		//	If f (k − 1,r) + (1 − x∗k ) < f (k,r + ak )
+		//		Set f (k,r + ak ) := f (k − 1,r) + (1 − x∗k ).
+		for(int r = 0; r <= Capacity - weightK; r++)
+		{
+			if(F[k-1][r] + 1 - Value[k] < F[k][r + weightK])
+			{
+				F[k][r + weightK] = F[k - 1][r] + 1 - Value[k];
+			}
+		}
+
+		//For r = b − ak + 1,..., b
+		//	If f (k − 1,r) + (1 − x∗k ) < g(k)
+		//		Set g(k) := f (k − 1,r) + (1 − x∗k ).
+		for(int r = Capacity - weightK + 1; r <= Capacity; r++)
+		{
+			if(F[k-1][r] + 1 - Value[k] < G[k])
+			{
+				G[k] = F[k - 1][r] + 1 - weightK;
+			}
+		}
+
+		if(G[k] < 1)
+		{
+			cout << "There is a CI." << endl;
+
+			// Retrieve Variables
+		}
+	}
+	return F[N][Capacity];
 }

@@ -46,7 +46,10 @@ GC::~GC(){
 
 bool GC::CoverCut(IloRangeArray constraints)
 {
-	// For each constraint
+	bool cutsAdded = false;
+	KnapsackProblem * kp = new KnapsackProblem();
+
+	//#pragma omp parallel for
 	for(int c = 0; c < constraints.getSize(); c++)
 	{
 		int num_vars = 0;
@@ -63,75 +66,26 @@ bool GC::CoverCut(IloRangeArray constraints)
 			continue;
 
 		float rhs = constraints[c].getUB();
-
-		// Solve Knapsack problem
-		IloEnv env2;
-		IloModel model2(env2);
-		IloCplex cplex2(env2);
-		IloObjective objective2(env2);
-
-		cplex2.setParam(IloCplex::MIPDisplay, 0);
-		cplex2.setParam(IloCplex::SimDisplay, 0);
-		cplex2.setParam(IloCplex::SiftDisplay, 0);
-
-		IloIntVarArray x(env2, num_vars);
-		for(int i=0; i<num_vars; i++)
-		{
-			char varname[32];
-			sprintf(varname, "x_%d", i);
-			x[i] = IloIntVar(env2, 0, 1, varname);
-		}
-		model2.add(x);
-
-		IloExpr obj2(env2), expr2(env2);
-		for(int i=0; i<num_vars; i++)
-		{
-			obj2 += (1 - Values[i]) *  x[i];
-			expr2 += Weights[i] * x[i];
-		}
-
-		model2.add(IloMinimize(env2, obj2));
-		model2.add(expr2 >= rhs + 0.001);
-
-		cplex2.extract(model2);
-		//cplex2.exportModel("knapsack_model.lp");
-
-		if(!cplex2.solve())
-			continue;
-
-		if(cplex2.getObjValue() < 1)
-		{
-			IloExpr ccut(env);
-			int count = 0, contador = 0;
-			for (IloExpr::LinearIterator it = constraints[c].getLinearIterator(); it.ok(); ++it)
-			{
-				if(cplex2.getIntValue(x[count]) == 1)
-				{
-					ccut += it.getVar();
-					contador++;
-				}
-				++count;;
-			}
-
-			cover_cuts_.add(ccut <= contador - 1);
-		}
+		
+		kp->Solve(rhs, Weights, Values, num_vars);
 	}
 
-	return false;
+	return cutsAdded;
 }
 
-void GC::GenerateCoverCuts(){
+bool GC::GenerateCoverCuts(){
 	
 	if(master->getStatus() != IloAlgorithm::Optimal)
-		return;
+		return false;
 
-	CoverCut(constraint_bw);
-	CoverCut(constraint_cpu);
+	bool ret1 = CoverCut(constraint_bw);
+	bool ret2 = CoverCut(constraint_cpu);
 
 	model.add(cover_cuts_);
-
 	master->extract(model);
-	master->exportModel("master_cover_cuts.lp");
+	//master->exportModel("master_cover_cuts.lp");
+
+	return ret1 || ret2;
 }
 
 void GC::addBranchLambda(int m, int valor){
@@ -562,14 +516,12 @@ int GC::Solve(Branch * branch){
 			ofs << endl;
 		}
 
-		if(colunas.size() == 0)
-			break;
+		if(colunas.size() == 0){
+			if(!GenerateCoverCuts())			
+				break;
+		}
 
 		AddColumns(colunas);
-
-		//master->solve();
-		//GenerateCoverCuts();
-
 		colunas.clear();
 	}
 	gCols = nCols - gCols;

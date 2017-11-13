@@ -6,6 +6,7 @@
 
 #include "Graph.h"
 #include "Request.h"
+#include "Utility.h"
 
 using namespace std;
 

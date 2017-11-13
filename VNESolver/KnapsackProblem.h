@@ -8,12 +8,10 @@
 class KnapsackProblem
 {
 public:
-	KnapsackProblem();
-	~KnapsackProblem();
-
 	float Solve(int Capacity, float Weight[], float Value[], int N);
 
-	float K[1000][1000];
+	float F[1000][1000];
+	float G[1000];
 };
 
 #endif
