@@ -12,6 +12,7 @@ public:
 
 	float F[1000][1000];
 	float G[1000];
+	bool Sel[1000][1000];
 };
 
 #endif
