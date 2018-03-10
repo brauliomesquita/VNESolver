@@ -24,8 +24,8 @@ int main(int argc, char *argv[])
 	ILPModel ilp;
 	ilp.Solve(data);
 
-	BP bp;
-	bp.Solve(data);
+	//BP bp;
+	//bp.Solve(data);
 
 	return 0;
 }
